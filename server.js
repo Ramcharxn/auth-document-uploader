@@ -129,6 +129,7 @@ app.post("/register", authMiddleware, async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
+  console.log(req.body)
   try {
     const user = await User.findOne({ user: req.body.user });
 

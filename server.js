@@ -228,7 +228,7 @@ app.post("/delete_user", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/all_users", async (req, res) => {
+app.get("/all_users", authMiddleware, async (req, res) => {
   try {
     const user = await User.find();
     res.status(200).send({ success: true, data: user });

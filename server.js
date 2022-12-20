@@ -82,7 +82,7 @@ app.post("/saveReport", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/getReport", authMiddleware, async (req, res) => {
+app.get("/getReport", async (req, res) => {
   try {
     const allReport = await Report.find();
     allReport.reverse();

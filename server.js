@@ -82,7 +82,7 @@ app.post("/saveReport", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/getReport", async (req, res) => {
+app.get("/getReport", authMiddleware, async (req, res) => {
   try {
     const allReport = await Report.find();
     allReport.reverse();
@@ -129,7 +129,6 @@ app.post("/register", authMiddleware, async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  console.log(req.body)
   try {
     const user = await User.findOne({ user: req.body.user });
 
@@ -229,7 +228,7 @@ app.post("/delete_user", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/all_users", authMiddleware, async (req, res) => {
+app.get("/all_users", async (req, res) => {
   try {
     const user = await User.find();
     res.status(200).send({ success: true, data: user });

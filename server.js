@@ -56,6 +56,10 @@ mongoose
 app.use(cors());
 app.use(express.json({ limit: "20mb" }));
 
+app.get('/',(req,res) => {
+  res.send('why r you hear? :)')
+})
+
 app.post("/saveReport", authMiddleware, async (req, res) => {
   try {
     const { name, date, fileName, verified, fileType, file, description } =

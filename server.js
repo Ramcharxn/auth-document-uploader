@@ -4,49 +4,76 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const Report = require("./reportModel");
 const User = require("./userModel");
-const SMS = require("./smsModel");
 require("dotenv").config();
 const authMiddleware = require("./authMiddleware");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// const client = require("twilio")(process.env.ACC_SID, process.env.AUTH_TOKEN);
+const client = require("twilio")(process.env.ACC_SID, process.env.AUTH_TOKEN);
 // const fast2sms = require('fast-two-sms')
+// const nexmo = require("nexmo");
 
-const nexmo =require('nexmo')
+
+// change setInterval time stamp
+// change report.smsDetails value 
+
+setInterval(() => {
+  helperSMSfunc();
+}, 10000);
+
+const helperSMSfunc = async () => {
+  const allReport = await Report.find();
+  const user = await User.find();
+
+  allReport
+    .filter(
+      (report) =>
+        report.verified == "Pending" &&
+        (new Date() - report.createdAt) / 3600000 > report.smsDetails + 48
+    )
+    .map(async (report) => {
+      sendTwilioSMS(user[0].phoneNumber, report.name, report.description)
+      report.smsDetails = report.smsDetails + 48;
 
 
-const helperSMSfunc = async(report) => {
-  const users = await SMS.find()
+      // sendVonageSMS(user[0].phoneNumber, report.name, report.description);
+      await report.save();
+    });
+};
 
-    users.map(user => {
-      sendSMS(user.phoneNumber, report )
+const sendTwilioSMS = (phoneNumber, name, description) => {
+  console.log(phoneNumber, name, description)
+  client.messages
+    .create({
+      body: `Record ${name} with description ${description} has not been verified yet`,
+      to: `+91${phoneNumber}`,
+      from: process.env.TWILIO_NUM,
     })
-    
+    .then((msg) => console.log(msg))
+    .catch((err) => console.log(err));
+};
 
-}
+// async function sendVonageSMS(phoneNumber, name, description) {
+//   const vonage = new nexmo({
+//     apiKey: process.env.API_K,
+//     apiSecret: process.env.API_S,
+//   });
 
+//   const from = "Vonage APIs";
+//   const to = `91${phoneNumber}`;
+//   const text = `Record ${name} with description ${description} has not been verified yet`;
 
-async function sendSMS(phoneNumber, report) {
-  const vonage = new nexmo({
-    apiKey: process.env.API_K,
-    apiSecret: process.env.API_S
-  })
-  
-    const from = "Vonage APIs"
-    const to = `91${phoneNumber}`
-    const text = `Record ${report.name} with description ${report.description} has not been verified yet`
+//   console.log(from, text, to);
 
-    await vonage.message.sendSms(from, to, text)
-  
-}
-
-// app.post("/msg_vonage",(req,res) => {
-
-//   sendSMS();
-//   res.send('helo world')
-// })
-
+//   try {
+//     // vonage.message
+//     //   .sendSms(from, to, text)
+//     //   .then((res) => console.log(res))
+//     //   .catch((err) => console.log(err));
+//   } catch (err) {
+//     console.log(err);
+//   }
+// }
 
 mongoose
   .connect(process.env.MONGO_URL)
@@ -56,23 +83,21 @@ mongoose
 app.use(cors());
 app.use(express.json({ limit: "20mb" }));
 
-app.get('/',(req,res) => {
-  res.send('why r you hear? :)')
-})
+app.get("/", (req, res) => {
+  res.send("why r you hear? :)");
+});
 
 app.post("/saveReport", authMiddleware, async (req, res) => {
   try {
-    const { name, date, fileName, verified, fileType, file, description } =
-      req.body;
+    const { name, date, verified, file, description } = req.body;
     const report = new Report({
       name,
       date,
-      fileName,
       verified,
-      fileType,
       file,
       description,
     });
+    report.updateCount = 1;
 
     await report.save();
 
@@ -87,44 +112,10 @@ app.get("/getReport", authMiddleware, async (req, res) => {
     const allReport = await Report.find();
     allReport.reverse();
 
-    allReport.filter(report => ((new Date() - report.createdAt)/3600000) > (report.smsDetails+48)).map(async report => {
-      // console.log( (new Date() - report.createdAt)/3600000 ,0.001 )
-      // console.log(report)
-      report.smsDetails = report.smsDetails+48
-      await report.save()
-      helperSMSfunc(report)
-    })
-    
     res.send(allReport);
   } catch (err) {
     console.log(err);
     res.send(err);
-  }
-});
-
-app.post("/register", authMiddleware, async (req, res) => {
-  try {
-    const operatorExist = await User.findOne({ user: req.body.user });
-    if (operatorExist) {
-      return res
-        .status(200)
-        .send({ message: "User already exists", success: false });
-    }
-    const password = req.body.password;
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    req.body.password = hashedPassword;
-
-    const newUser = new User(req.body);
-    await newUser.save();
-    res
-      .status(200)
-      .send({ message: "User created successfully", success: true });
-  } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .send({ message: "Error creating user", success: false, error });
   }
 });
 
@@ -177,18 +168,20 @@ app.post("/updateProfile", authMiddleware, async (req, res) => {
         user.password = hashedPassword;
       }
 
+      if (req.body.phoneNumber != "") {
+        user.phoneNumber = req.body.phoneNumber;
+      }
+
       await user.save();
 
       const token = jwt.sign({ user }, process.env.JWT_SECRET_KEY, {
         expiresIn: "1d",
       });
-      res
-        .status(200)
-        .send({
-          message: "Credeentials updated successful",
-          success: true,
-          token: token,
-        });
+      res.status(200).send({
+        message: "Credentials updated successful",
+        success: true,
+        token: token,
+      });
     }
   } catch (error) {
     console.log(error);
@@ -198,12 +191,41 @@ app.post("/updateProfile", authMiddleware, async (req, res) => {
   }
 });
 
-app.post("/UpdateRecord", authMiddleware, async (req, res) => {
-  console.log("in");
+app.post("/deleteReport", authMiddleware, async (req, res) => {
   try {
-    const report = await Report.findById(req.body.item._id);
+    await Report.findByIdAndDelete(req.body.id);
+
+    res.status(200).send({ message: "Deleted successful", success: true });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ message: "Error deleting record", success: false, error });
+  }
+});
+
+app.post("/UpdateRecord", authMiddleware, async (req, res) => {
+  try {
+    const report = await Report.findById(req.body.id);
     report.verified = req.body.verified;
-    report.remarks = req.body.remarks;
+    report.file = req.body.file;
+    report.updateCount = report.updateCount + 1;
+
+    if (req.body.name != "") {
+      report.name = req.body.name;
+    }
+
+    if (req.body.date != "") {
+      report.date = req.body.date;
+    }
+
+    if (req.body.remarks != "") {
+      report.remarks = req.body.remarks;
+    }
+
+    if (req.body.description != "") {
+      report.description = req.body.description;
+    }
 
     await report.save();
 
@@ -213,77 +235,6 @@ app.post("/UpdateRecord", authMiddleware, async (req, res) => {
     res
       .status(500)
       .send({ message: "Error deleting user", success: false, error });
-  }
-});
-
-app.post("/delete_user", authMiddleware, async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.body.id);
-    res.status(200).send({ message: "User Deleted successful", success: true });
-  } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .send({ message: "Error deleting user", success: false, error });
-  }
-});
-
-app.get("/all_users", authMiddleware, async (req, res) => {
-  try {
-    const user = await User.find();
-    res.status(200).send({ success: true, data: user });
-  } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .send({ message: "Error logging in", success: false, error });
-  }
-});
-
-app.get("/all_sms_user", authMiddleware, async (req, res) => {
-  try {
-    const smsUser = await SMS.find();
-    res.status(200).send({ success: true, data: smsUser });
-  } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .send({ message: "Error logging in", success: false, error });
-  }
-});
-
-app.post("/delete_sms_user", authMiddleware, async (req, res) => {
-  try {
-    await SMS.findByIdAndDelete(req.body.id);
-    res.status(200).send({ message: "User Deleted successful", success: true });
-  } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .send({ message: "Error deleting user", success: false, error });
-  }
-});
-
-app.post("/new_sms_user", authMiddleware, async (req, res) => {
-  try {
-    const operatorExist = await SMS.findOne({
-      phoneNumber: req.body.phoneNumber,
-    });
-    console.log(operatorExist);
-    if (operatorExist) {
-      return res
-        .status(200)
-        .send({ message: "Phone Number already exists", success: false });
-    }
-    const newSMS = new SMS(req.body);
-    await newSMS.save();
-    res
-      .status(200)
-      .send({ message: "User created successfully", success: true });
-  } catch (error) {
-    res
-      .status(500)
-      .send({ message: "Error creating user", success: false, error });
   }
 });
 
@@ -311,7 +262,7 @@ app.post("/new_sms_user", authMiddleware, async (req, res) => {
 
 // app.post("/send_msg_fast2sms",async (req, res) => {
 
-//   var options = {authorization : process.env.API_KEY , message : 'YOUR_MESSAGE_HERE' ,  numbers : ['6382944040']} 
+//   var options = {authorization : process.env.API_KEY , message : 'YOUR_MESSAGE_HERE' ,  numbers : ['6382944040']}
 
 //   const response = await fast2sms.sendMessage(options)
 
@@ -320,7 +271,7 @@ app.post("/new_sms_user", authMiddleware, async (req, res) => {
 // });
 
 // const sendTextMessageFast2Sms = async() => {
-  
+
 //     .then((res) => console.log(res, 'here'))
 //     .catch((err) => console.log(err));
 // };

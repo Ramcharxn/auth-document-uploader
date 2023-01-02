@@ -15,16 +15,15 @@ const reportSchema = new mongoose.Schema(
             required: true
         },
         file: {
-            type:String,
+            type:Array,
             required: true
         },
-        fileName : {
-            type:String,
-            required: true
+        lastUpdate: {
+            type: String,
+            default: (new Date().getDate() + 1) + '/' + new Date().getMonth() + '/' +  new Date().getFullYear(),
         },
-        fileType: {
-            type:String,
-            required: true
+        updateCount :{
+            type: Number,
         },
         description : {
             type:String,

@@ -2,8 +2,8 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const mongoose = require("mongoose");
-const Report = require("./reportModel");
-const User = require("./userModel");
+const Report = require("./models/reportModel");
+const User = require("./models/userModel");
 require("dotenv").config();
 const authMiddleware = require("./authMiddleware");
 const bcrypt = require("bcryptjs");
@@ -191,6 +191,25 @@ app.post("/updateProfile", authMiddleware, async (req, res) => {
   }
 });
 
+// app.post("/NewUser", async (req, res) => {
+//   try {
+//     const {user, phoneNumber, role} = req.body
+//     var password = req.body.password;
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
+//     var password = hashedPassword;
+//     console.log(user)
+//     const newUser = new User({user, password, phoneNumber, role})
+//     await newUser.save()
+//     res.send("new User Created")
+//   } catch (error) {
+//     console.log(error);
+//     res
+//       .status(500)
+//       .send({ message: "Error logging in", success: false, error });
+//   }
+// });
+
 app.post("/deleteReport", authMiddleware, async (req, res) => {
   try {
     await Report.findByIdAndDelete(req.body.id);
@@ -207,13 +226,19 @@ app.post("/deleteReport", authMiddleware, async (req, res) => {
 app.post("/UpdateRecord", authMiddleware, async (req, res) => {
   try {
     const report = await Report.findById(req.body.id);
-    report.verified = req.body.verified;
+    // report.verified = req.body.verified;
     report.file = req.body.file;
     report.updateCount = report.updateCount + 1;
 
     if (req.body.name != "") {
       report.name = req.body.name;
     }
+
+    if (req.body.verified == "") {
+      report.verified = "Pending";
+    } else {
+        report.verified = req.body.verified;
+      }
 
     if (req.body.date != "") {
       report.date = req.body.date;
@@ -225,6 +250,11 @@ app.post("/UpdateRecord", authMiddleware, async (req, res) => {
 
     if (req.body.description != "") {
       report.description = req.body.description;
+    }
+
+    
+    if (req.body.clarification != "") {
+      report.clarification = req.body.clarification;
     }
 
     await report.save();

@@ -37,6 +37,10 @@ const reportSchema = new mongoose.Schema(
             type:String,
             // required: true
         },
+        clarification : {
+            type:String,
+            // required: true
+        },
     },{timestamps: true}
 )
 

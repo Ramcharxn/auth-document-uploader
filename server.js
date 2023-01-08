@@ -19,7 +19,7 @@ const client = require("twilio")(process.env.ACC_SID, process.env.AUTH_TOKEN);
 
 setInterval(() => {
   helperSMSfunc();
-}, 10000);
+}, 3600000);
 
 const helperSMSfunc = async () => {
   const allReport = await Report.find();
@@ -42,7 +42,7 @@ const helperSMSfunc = async () => {
 };
 
 const sendTwilioSMS = (phoneNumber, name, description) => {
-  console.log(phoneNumber, name, description)
+  // console.log(phoneNumber, name, description)
   client.messages
     .create({
       body: `Record ${name} with description ${description} has not been verified yet`,

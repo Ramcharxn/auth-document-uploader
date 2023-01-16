@@ -238,6 +238,7 @@ app.post("/UpdateRecord", authMiddleware, async (req, res) => {
       report.verified = "Pending";
     } else {
         report.verified = req.body.verified;
+        report.lastUpdate = new Date().getDate() + '-' + (new Date().getMonth() + 1) + '-' +  new Date().getFullYear()
       }
 
     if (req.body.date != "") {

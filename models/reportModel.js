@@ -20,7 +20,6 @@ const reportSchema = new mongoose.Schema(
         },
         lastUpdate: {
             type: String,
-            default: (new Date().getDate() + 1) + '/' + new Date().getMonth() + '/' +  new Date().getFullYear(),
         },
         updateCount :{
             type: Number,
